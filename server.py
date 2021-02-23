@@ -10,17 +10,12 @@ app = Flask(__name__)
 def hello_world():
     return 'Hello World!'
 
-# function for responses
-
-
 # create a route for webhook
 @app.route('/webhook', methods=['POST', 'GET'])
 def webhook():
     req = request.get_json(force=True)
     resp = results(req)
     return make_response(jsonify(resp))
-
-
 
 # run the app
 if __name__ == '__main__':
