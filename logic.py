@@ -9,8 +9,10 @@ def results(req):
     intent = req.get('queryResult').get('intent').get('displayName')
     if intent == 'buy':
         return buy(req)
-    else:
+    elif intent == 'check_conditions':
         return conditions(req)
+    elif intent == 'add_spot':
+        return add_spot(req)
 
 def calc_vol_len(height, weight, exp):
     print('calculating volume and length')
@@ -93,10 +95,23 @@ def get_factors(swell_period, wave_height, wind_direction, wind_speed, spot_dire
     wind_direction_avg = sum(wind_direction)/len(wind_direction) #360 degrees, 0 = north
     wind_speed_avg = sum(wind_speed)/len(wind_speed) #meters/second
 
-    #if wind from land -> flatter waves -> larger board
-    wind_direction_factor = 0
-    if wind_direction_avg < (spot_direction + 20) and wind_speed_avg > (spot_direction - 20):
+    if spot_direction > 339:
+        end = spot_direction + 20 - 359
+    else:
+        end = spot_direction + 20
+
+    if spot_direction < 20:
+        start = spot_direction - 20 + 360
+    else:
+        start = spot_direction - 20
+
+    end = end-start if (end - start)>0 else end-start+360
+    mid = wind_direction_avg - start if (wind_direction_avg - start) > 0 else wind_direction_avg - start + 360
+
+    # if wind from land -> flatter waves -> larger board
+    if mid < end: #windirection lies within offshore (from land to sea) angle range of spot
         wind_direction_factor = 0.05
+    else: wind_direction_factor = 0 #does not
 
     #factor wind direction by intensity of wind
     if wind_speed_avg < 3: #~11kmh
@@ -173,6 +188,12 @@ def conditions(req):
     foot = new_length//30.48
     inch = (new_length%30.48)/2.54
     return {'fulfillmentText': u'Take a {:.0f}\'{:.0f} board with about {:.0f}l volume for today\'s conditions. Bon surf!'.format(foot, inch, new_vol)}
+
+def add_spot(req):
+    #get, lat, lon, offshore_direction
+    return 0
+
+
 
 if __name__ == '__main__':
     conditions('test')
