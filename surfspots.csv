@@ -1,5 +1,5 @@
-﻿name;id
-le petit minou;1520
-blancs-sablons;74
-plage du trez-hir;5898
-porsmilin;1518
+﻿name,lon,lat,offshore_direction
+le petit minou,-4.6,48.33,45
+blancs-sablons,-4.76,48.37,135
+plage du trez-hir,-4.7,48.34,270
+porsmilin,-4.67,48.35,0
