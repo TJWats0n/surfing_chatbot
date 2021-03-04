@@ -69,6 +69,7 @@ def get_forecast(lat, lon, hours):
 
     #get forecast for next 4 hours
     start = arrow.now().floor('hour')
+    start = start.shift(hours=1)
     end = arrow.now().shift(hours=hours).floor('hour')
 
     response = requests.get(
@@ -171,7 +172,7 @@ def conditions(req):
     source = 'noaa' #several sources are offered for the values we need - checking with windguru noaa has the closest results
 
     swell_period, wave_height, wind_direction, wind_speed = [], [], [], []
-    for entry in range(hours):
+    for entry in range(hours-1):
         swell_period.append(forecast['hours'][entry]['swellPeriod'][source])
         wave_height.append(forecast['hours'][entry]['waveHeight'][source])
         wind_direction.append(forecast['hours'][entry]['windDirection'][source])
@@ -191,9 +192,18 @@ def conditions(req):
 
 def add_spot(req):
     #get, lat, lon, offshore_direction
-    return 0
+    name = req.get('queryResult').get('parameters').get('name')
+    lat = float(req.get('queryResult').get('parameters').get('lat'))
+    lon = float(req.get('queryResult').get('parameters').get('lon'))
+    offshore = int(req.get('queryResult').get('parameters').get('offshore'))
 
-
+    surfspots = pd.read_csv('surfspots.csv')
+    if name in surfspots['name'].tolist():
+        return {'fulfillmentText': u'This place was already added before. Ask for the conditions at this place.'}
+    new_spot = pd.DataFrame({'name': [name.lower()], 'lon': [lon], 'lat': [lat], 'offshore_direction': [offshore]})
+    surfspots = surfspots.append(new_spot)
+    surfspots.to_csv('surfspots.csv', index=False)
+    return {'fulfillmentText': u'Your spot was successfully added. You can now ask for board recommendations in current conditions for this spot.'}
 
 if __name__ == '__main__':
     conditions('test')
