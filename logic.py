@@ -2,7 +2,9 @@
 import pandas as pd
 import requests
 from APIKEY import Key
+from rich_responses import fulfillment_messages
 import arrow
+import textdistance
 
 def results(req):
     #this function distributes request to respective function based on intent
@@ -41,7 +43,7 @@ def infer_name(spot):
     #some string matching logic
 
 
-def sanity_checks(height=100, weight=80, max_price=150, spot='le petit minou', exp=1):
+def sanity_checks(height=100, weight=80, max_price=150, cur_spot='le petit minou', exp=1):
     print('checking sanity')
     # sanity checks: returns 0 is everything is good, Error message for respective parameters
     if height > 230 or height < 100:
@@ -57,8 +59,13 @@ def sanity_checks(height=100, weight=80, max_price=150, spot='le petit minou', e
         return {'fulfillmentText': u'We couldn\'t resolve your experience level. Please stay in the range of 0-10.'}
 
     surfspots = pd.read_csv('surfspots.csv')
-    if spot.lower() not in surfspots['name'].tolist():
-        infer_name(spot)
+    if cur_spot.lower() not in surfspots['name'].tolist():
+        #very basic text matching
+        for entry in surfspots['name'].tolist():
+            if textdistance.levenshtein.distance(entry, cur_spot) < 4:
+                global spot #change the spot from within this function
+                spot = entry
+                return 0
         return {'fulfillmentText': u'Unfortunately your surfspot is not available yet. You can add it by typing "add surfspot".'}
 
     print('sanity checks were successful')
@@ -145,9 +152,35 @@ def buy(req):
 
     volume, length = calc_vol_len(height, weight, exp)
 
-    #query database with ranges for these values (+ price)
+    # bring our length into format of website query using normalisation
+    x_min = 122
+    x_max = 335
+    if length < 122:
+        length = 122
+    if length > 427:
+        length = 427
 
-    return {'fulfillmentText': u'Here is a list of surfboards:'}
+    a = 48
+    b = 132
+    #https: // en.wikipedia.org / wiki / Normalization_(statistics)
+    web_length = a + ((length - x_min)*(b-a))/(x_max-x_min)
+
+    #query database/csv with ranges for these values (+ price)
+    exp_translation = {'beginner': 'board_level_1', 'intermediate': 'board_level_2', 'advanced': 'board_level_3'}
+
+    request = 'https://www.akewatu.fr/surf/planches-de-surf?level={EXP}&topProduct=0&pricerange=119%3B{MAX_PRICE}&' \
+              'volumerange={VOL_MIN}%3B{VOL_MAX}&length%5B%5D= {length}&zone%5B%5D=1&page=1'.format(
+        EXP=exp_translation[exp],
+        MAX_PRICE = int(max_price),
+        VOL_MIN = int(volume-5),
+        VOL_MAX = int(volume+5),
+        length = int(web_length)
+    )
+
+    #return {'fulfillmentText': u'Here is a list of surfboards: {request}'.format(request = request)}
+    f = fulfillment_messages()
+    return f
+
 
 def conditions(req):
     height = req.get('queryResult').get('parameters').get('height').get('amount')  # cm
